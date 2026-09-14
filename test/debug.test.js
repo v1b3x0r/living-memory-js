@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { enterSpace, EnterFailed, RoomFull } from "../src/index.js";
+import { enterSpace, SpaceError } from "../src/index.js";
 
 function sse(result) {
 	return `event: message\ndata: ${JSON.stringify({ jsonrpc: "2.0", id: 1, result })}\n\n`;
@@ -84,7 +84,8 @@ test("failed enter still carries debug events", async () => {
 	await assert.rejects(
 		() => enterSpace("not-a-url"),
 		(err) =>
-			err instanceof EnterFailed &&
+			err instanceof SpaceError &&
+			err.code === "ENTER_FAILED" &&
 			err.debug.events.length === 1 &&
 			err.debug.events[0].ok === false &&
 			err.debug.events[0].op === "enter",
@@ -113,7 +114,10 @@ test("RoomFull is recorded as a failed remember", async () => {
 	);
 	try {
 		const room = await enterSpace("https://example.test/t/full/mcp");
-		await assert.rejects(() => room.remember("one more"), RoomFull);
+		await assert.rejects(
+			() => room.remember("one more"),
+			(err) => err instanceof SpaceError && err.code === "ROOM_FULL",
+		);
 		const last = room.debug.events.at(-1);
 		assert.equal(last.op, "remember");
 		assert.equal(last.ok, false);

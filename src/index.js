@@ -16,4 +16,4 @@
  */
 
 export { enterSpace } from "./enter-space.js";
-export { EnterFailed, RoomFull } from "./errors.js";
+export { SpaceError } from "./errors.js";

@@ -9,7 +9,9 @@ if (!url) {
 const room = await enterSpace(url);
 console.log(room.kind, room.address);
 
-const note = process.argv.slice(2).join(" ") || "Customer prefers morning appointments.";
+const note =
+	process.argv.slice(2).join(" ") ||
+	"The blue door on the left opens onto the rooftop.";
 await room.remember(note);
 const memories = await room.search(note);
 for (const memory of memories) console.log("-", memory.text);

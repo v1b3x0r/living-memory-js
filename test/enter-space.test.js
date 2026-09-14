@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { enterSpace, EnterFailed, RoomFull } from "../src/index.js";
+import { enterSpace, SpaceError } from "../src/index.js";
 
 function sse(result) {
 	return `event: message\ndata: ${JSON.stringify({ jsonrpc: "2.0", id: 1, result })}\n\n`;
@@ -49,8 +49,14 @@ function ok(result) {
 }
 
 test("rejects a missing address at the door", async () => {
-	await assert.rejects(() => enterSpace(""), EnterFailed);
-	await assert.rejects(() => enterSpace("not-a-url"), EnterFailed);
+	await assert.rejects(
+		() => enterSpace(""),
+		(err) => err instanceof SpaceError && err.code === "ENTER_FAILED",
+	);
+	await assert.rejects(
+		() => enterSpace("not-a-url"),
+		(err) => err instanceof SpaceError && err.code === "ENTER_FAILED",
+	);
 });
 
 test("fails at the door when the address is dead", async () => {
@@ -60,7 +66,10 @@ test("fails at the door when the address is dead", async () => {
 	try {
 		await assert.rejects(
 			() => enterSpace("https://example.test/mcp"),
-			(err) => err instanceof EnterFailed && /could not reach/.test(err.message),
+			(err) =>
+				err instanceof SpaceError &&
+				err.code === "ENTER_FAILED" &&
+				!/MCP /.test(err.message),
 		);
 	} finally {
 		restore();
@@ -75,7 +84,10 @@ test("fails at the door when it is not a Living Memory space", async () => {
 		}),
 	);
 	try {
-		await assert.rejects(() => enterSpace("https://example.test/mcp"), EnterFailed);
+		await assert.rejects(
+			() => enterSpace("https://example.test/mcp"),
+			(err) => err instanceof SpaceError && err.code === "ENTER_FAILED",
+		);
 	} finally {
 		restore();
 	}
@@ -147,7 +159,87 @@ test("a full room is enterable; remember throws RoomFull", async () => {
 	try {
 		const room = await enterSpace("https://example.test/t/full/mcp");
 		assert.equal(room.kind, null);
-		await assert.rejects(() => room.remember("one more thing"), RoomFull);
+		await assert.rejects(
+			() => room.remember("one more thing"),
+			(err) =>
+				err instanceof SpaceError &&
+				err.code === "ROOM_FULL" &&
+				!/MCP /.test(err.message),
+		);
+	} finally {
+		restore();
+	}
+});
+
+test("remember maps a byte-limit refusal to MEMORY_TOO_LARGE", async () => {
+	const restore = mockFetch(
+		byMethod({
+			initialize: ok({ protocolVersion: "2025-06-18" }),
+			"tools/list": ok(roomTools),
+			"tools/call": () =>
+				new Response(
+					jsonRpcError("Invalid params: content exceeds 65536 bytes"),
+					{ status: 200 },
+				),
+		}),
+	);
+	try {
+		const room = await enterSpace("https://example.test/t/abc/mcp");
+		await assert.rejects(
+			() => room.remember("huge"),
+			(err) =>
+				err instanceof SpaceError &&
+				err.code === "MEMORY_TOO_LARGE" &&
+				err.cause &&
+				!/MCP /.test(err.message),
+		);
+	} finally {
+		restore();
+	}
+});
+
+test("HTTP 429 without a full-room message is REQUEST_FAILED", async () => {
+	const restore = mockFetch(
+		byMethod({
+			initialize: ok({ protocolVersion: "2025-06-18" }),
+			"tools/list": ok(roomTools),
+			"tools/call": () => new Response("rate limited", { status: 429 }),
+		}),
+	);
+	try {
+		const room = await enterSpace("https://example.test/t/abc/mcp");
+		await assert.rejects(
+			() => room.remember("one more"),
+			(err) => err instanceof SpaceError && err.code === "REQUEST_FAILED",
+		);
+	} finally {
+		restore();
+	}
+});
+
+test("trial-full tool result is ROOM_FULL, not a dead room on enter", async () => {
+	const restore = mockFetch(
+		byMethod({
+			initialize: ok({ protocolVersion: "2025-06-18" }),
+			"tools/list": ok(roomTools),
+			"tools/call": () =>
+				ok({
+					isError: true,
+					content: [
+						{
+							type: "text",
+							text: "this trial memory world is full — run the local OSS server",
+						},
+					],
+				}),
+		}),
+	);
+	try {
+		const room = await enterSpace("https://example.test/t/full/mcp");
+		await assert.rejects(
+			() => room.remember("one more"),
+			(err) => err instanceof SpaceError && err.code === "ROOM_FULL",
+		);
 	} finally {
 		restore();
 	}

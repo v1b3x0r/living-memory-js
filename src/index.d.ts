@@ -9,13 +9,17 @@ export interface Debug {
 	readonly events: DebugEvent[];
 }
 
-export class EnterFailed extends Error {
-	name: "EnterFailed";
-	debug?: Debug;
-}
+export type SpaceErrorCode =
+	| "ENTER_FAILED"
+	| "MEMORY_TOO_LARGE"
+	| "ROOM_FULL"
+	| "REQUEST_FAILED";
 
-export class RoomFull extends Error {
-	name: "RoomFull";
+export class SpaceError extends Error {
+	name: "SpaceError";
+	code: SpaceErrorCode;
+	cause?: unknown;
+	debug?: Debug;
 }
 
 export type SpaceKind = "room" | "world" | null;

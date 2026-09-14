@@ -1,11 +1,9 @@
-import { RoomFull } from "./errors.js";
-
-function isFull(err, result) {
-	if (result?.isError && /full/i.test(result.text ?? "")) return true;
-	if (err?.status === 429) return true;
-	if (err && /full|ROOM_FULL/i.test(err.message ?? "")) return true;
-	return false;
-}
+import {
+	REQUEST_FAILED,
+	SpaceError,
+	classifyWrite,
+	publicMessage,
+} from "./errors.js";
 
 function memoriesFrom(text) {
 	if (!text || !text.trim()) return [];
@@ -21,9 +19,22 @@ export function createSpace({ address, mcp, debug, name = null }) {
 	// handoff, so tool names are not a discriminator. v1 leaves it null.
 	const kind = null;
 
+	function fail(op, extra, err, result) {
+		const code = classifyWrite(err, result);
+		const error = new SpaceError(code, publicMessage(code), {
+			cause: err ?? new Error(result?.text ?? "request failed"),
+			debug: debug.view,
+		});
+		debug.record({ op, ok: false, error: error.code, ...extra });
+		throw error;
+	}
+
 	async function remember(content) {
 		if (typeof content !== "string" || !content.trim()) {
-			throw new Error("remember() needs a non-empty string");
+			throw new SpaceError(REQUEST_FAILED, publicMessage(REQUEST_FAILED), {
+				cause: new Error("remember() needs a non-empty string"),
+				debug: debug.view,
+			});
 		}
 		const started = Date.now();
 		const text = content.trim();
@@ -31,35 +42,10 @@ export function createSpace({ address, mcp, debug, name = null }) {
 		try {
 			result = await mcp.tool("memory_add", { content: text });
 		} catch (err) {
-			debug.record({
-				op: "remember",
-				ok: false,
-				bytes: text.length,
-				ms: Date.now() - started,
-				error: err.message,
-			});
-			if (isFull(err)) throw new RoomFull(err.message);
-			throw err;
-		}
-		if (isFull(null, result)) {
-			debug.record({
-				op: "remember",
-				ok: false,
-				bytes: text.length,
-				ms: Date.now() - started,
-				error: result.text,
-			});
-			throw new RoomFull(result.text);
+			fail("remember", { bytes: text.length, ms: Date.now() - started }, err);
 		}
 		if (result.isError) {
-			debug.record({
-				op: "remember",
-				ok: false,
-				bytes: text.length,
-				ms: Date.now() - started,
-				error: result.text,
-			});
-			throw new Error(result.text);
+			fail("remember", { bytes: text.length, ms: Date.now() - started }, null, result);
 		}
 		debug.record({
 			op: "remember",
@@ -71,20 +57,43 @@ export function createSpace({ address, mcp, debug, name = null }) {
 
 	async function search(query) {
 		if (typeof query !== "string" || !query.trim()) {
-			throw new Error("search() needs a non-empty string");
+			throw new SpaceError(REQUEST_FAILED, publicMessage(REQUEST_FAILED), {
+				cause: new Error("search() needs a non-empty string"),
+				debug: debug.view,
+			});
 		}
 		const started = Date.now();
 		const q = query.trim();
-		const result = await mcp.tool("memory_search", { query: q });
-		if (result.isError) {
+		let result;
+		try {
+			result = await mcp.tool("memory_search", { query: q });
+		} catch (err) {
+			const error = new SpaceError(REQUEST_FAILED, publicMessage(REQUEST_FAILED), {
+				cause: err,
+				debug: debug.view,
+			});
 			debug.record({
 				op: "search",
 				ok: false,
 				query: q,
 				ms: Date.now() - started,
-				error: result.text,
+				error: error.code,
 			});
-			throw new Error(result.text);
+			throw error;
+		}
+		if (result.isError) {
+			const error = new SpaceError(REQUEST_FAILED, publicMessage(REQUEST_FAILED), {
+				cause: new Error(result.text),
+				debug: debug.view,
+			});
+			debug.record({
+				op: "search",
+				ok: false,
+				query: q,
+				ms: Date.now() - started,
+				error: error.code,
+			});
+			throw error;
 		}
 		const memories = memoriesFrom(result.text);
 		debug.record({

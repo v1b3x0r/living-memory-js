@@ -1,5 +1,5 @@
 import { createDebug } from "./capabilities.js";
-import { EnterFailed } from "./errors.js";
+import { ENTER_FAILED, SpaceError, publicMessage } from "./errors.js";
 import { createMcp } from "./mcp.js";
 import { createSpace } from "./space.js";
 
@@ -16,9 +16,10 @@ function asAddress(address) {
 	return url;
 }
 
-function fail(debug, message, extra = {}) {
+function fail(debug, cause, extra = {}) {
+	const message = publicMessage(ENTER_FAILED);
 	debug.record({ op: "enter", ok: false, error: message, ...extra });
-	throw new EnterFailed(message, debug.view);
+	throw new SpaceError(ENTER_FAILED, message, { cause, debug: debug.view });
 }
 
 export async function enterSpace(address, options = {}) {
@@ -29,7 +30,7 @@ export async function enterSpace(address, options = {}) {
 	try {
 		url = asAddress(address);
 	} catch (err) {
-		fail(debug, err.message);
+		fail(debug, err);
 	}
 
 	const mcp = createMcp(url);
@@ -38,12 +39,12 @@ export async function enterSpace(address, options = {}) {
 	try {
 		tools = await mcp.listTools();
 	} catch (err) {
-		fail(debug, err.message, { address: url });
+		fail(debug, err, { address: url });
 	}
 
 	const names = new Set(tools.map((t) => t.name));
 	if (!names.has("memory_add") || !names.has("memory_search")) {
-		fail(debug, `not a Living Memory space: ${url}`, { address: url });
+		fail(debug, new Error("not a Living Memory space"), { address: url });
 	}
 
 	const space = createSpace({ address: url, mcp, debug });

@@ -1,5 +1,3 @@
-import { EnterFailed } from "./errors.js";
-
 function parseSse(text) {
 	const lines = text.split(/\r?\n/);
 	const payloads = [];
@@ -8,6 +6,17 @@ function parseSse(text) {
 	}
 	if (payloads.length === 0) return JSON.parse(text);
 	return JSON.parse(payloads[payloads.length - 1]);
+}
+
+/** Wire failure. Not a public error — enter/remember/search map it. */
+export class TransportError extends Error {
+	constructor(message, extra = {}) {
+		super(message);
+		this.name = "TransportError";
+		if (extra.status != null) this.status = extra.status;
+		if (extra.body != null) this.body = extra.body;
+		if (extra.rpcCode != null) this.rpcCode = extra.rpcCode;
+	}
 }
 
 export function createMcp(address) {
@@ -29,29 +38,28 @@ export function createMcp(address) {
 				body: JSON.stringify(body),
 			});
 		} catch (err) {
-			throw new EnterFailed(`could not reach ${address}: ${err.message}`);
+			throw new TransportError(err.message, { cause: err });
 		}
 
 		const text = await res.text();
 		if (!res.ok) {
-			const error = new Error(`MCP ${method} → HTTP ${res.status}: ${text.slice(0, 300)}`);
-			error.status = res.status;
-			error.body = text;
-			throw error;
+			throw new TransportError(text.slice(0, 300) || `HTTP ${res.status}`, {
+				status: res.status,
+				body: text,
+			});
 		}
 
 		let payload;
 		try {
 			payload = parseSse(text);
 		} catch {
-			throw new EnterFailed(`not a Living Memory space: ${address}`);
+			throw new TransportError("response was not a Living Memory space", { body: text });
 		}
 		if (payload.error) {
-			const error = new Error(
-				`MCP ${method} → ${payload.error.code}: ${payload.error.message}`,
-			);
-			error.code = payload.error.code;
-			throw error;
+			throw new TransportError(payload.error.message || "request failed", {
+				rpcCode: payload.error.code,
+				body: payload.error.message,
+			});
 		}
 		return payload.result;
 	}
@@ -61,7 +69,7 @@ export function createMcp(address) {
 		await call("initialize", {
 			protocolVersion: "2025-06-18",
 			capabilities: {},
-			clientInfo: { name: "living-memory", version: "0.1.0" },
+			clientInfo: { name: "living-memory-js", version: "0.1.0" },
 		});
 		initialised = true;
 	}
