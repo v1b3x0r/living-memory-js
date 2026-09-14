@@ -3,9 +3,9 @@
 [![npm version](https://img.shields.io/npm/v/%40nature-labs%2Fliving-memory-js)](https://www.npmjs.com/package/@nature-labs/living-memory-js)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
-The JavaScript door into a hosted Living Memory space.
+The JavaScript and TypeScript door into a hosted Living Memory space.
 
-Use it when you have a space URL and want to remember or search without speaking MCP.
+Use it when an AI agent, Node app, or web app has a space URL and needs to remember or search over HTTPS — without a local MCP server.
 
 <p align="center">
   <img src="docs/door-card.webp" alt="living-memory-js — one door, any agent, your world" width="100%"/>
@@ -72,3 +72,9 @@ This is not the engine and not the stdio MCP server.
 - GitHub: [v1b3x0r/living-memory-js](https://github.com/v1b3x0r/living-memory-js)
 - Engine: [@nature-labs/living-memory-engine](https://www.npmjs.com/package/@nature-labs/living-memory-engine)
 - Local MCP: [@nature-labs/lme-mcp](https://www.npmjs.com/package/@nature-labs/lme-mcp)
+
+---
+
+## License
+
+[MIT](./LICENSE)

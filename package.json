@@ -1,7 +1,7 @@
 {
   "name": "@nature-labs/living-memory-js",
   "version": "0.1.0",
-  "description": "JS door into a hosted Living Memory space (enterSpace). Not the engine, not the stdio MCP server.",
+  "description": "JavaScript door into a hosted Living Memory space (enterSpace, remember, search). Not the engine, not the stdio MCP server.",
   "license": "MIT",
   "author": "nature-labs",
   "type": "module",
@@ -33,8 +33,12 @@
   },
   "keywords": [
     "living-memory",
-    "memory",
-    "agent-memory"
+    "agent-memory",
+    "ai-memory",
+    "llm-memory",
+    "javascript",
+    "typescript",
+    "sdk"
   ],
   "publishConfig": {
     "access": "public"
