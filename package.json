@@ -1,0 +1,42 @@
+{
+  "name": "@nature-labs/living-memory",
+  "version": "0.1.0",
+  "description": "Enter a Living Memory space by address.",
+  "license": "MIT",
+  "author": "nature-labs",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js"
+    }
+  },
+  "files": [
+    "src",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "prepublishOnly": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/v1b3x0r/living-memory-js.git"
+  },
+  "homepage": "https://github.com/v1b3x0r/living-memory-js",
+  "bugs": {
+    "url": "https://github.com/v1b3x0r/living-memory-js/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "living-memory",
+    "memory",
+    "agent-memory"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
