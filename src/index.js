@@ -11,7 +11,7 @@
  * second door. MCP stays underneath. debug/kind/errors are for
  * when it breaks, not vocabulary the happy path must learn.
  *
- *   import { enterSpace } from "living-memory"
+ *   import { enterSpace } from "@nature-labs/living-memory-js"
  *   const room = await enterSpace(url)
  */
 

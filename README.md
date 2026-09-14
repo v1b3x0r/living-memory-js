@@ -1,11 +1,13 @@
-# @nature-labs/living-memory
+# @nature-labs/living-memory-js
+
+The JavaScript door into a hosted space. Not the engine. Not the stdio server.
 
 ```bash
-npm i @nature-labs/living-memory
+npm i @nature-labs/living-memory-js
 ```
 
 ```js
-import { enterSpace } from "@nature-labs/living-memory"
+import { enterSpace } from "@nature-labs/living-memory-js"
 
 const room = await enterSpace(process.env.LIVING_MEMORY_URL)
 await room.remember("Customer prefers morning appointments.")
